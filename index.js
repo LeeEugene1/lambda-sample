@@ -1,9 +1,16 @@
 const mysql = require('mysql2/promise');
+
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3({
+    accessKeyId: '',
+    secretAccessKey: '',
+    region: ''//ap-northeast-2
+});
 const pool = mysql.createPool({
-    host: "",
+    host: '',
     user: "",
     password: "",
-    database: ""
+    database: ''
   });
 
 async function execute(sql, values) {
@@ -17,16 +24,30 @@ async function execute(sql, values) {
 }
 
 exports.handler = async (event) => {
-    console.log('Create Top Creators View')
     try{
-        const test = 200
-        const test2 = 2
-        const cals = await execute(`SELECT ? - ? AS result;`,[test, test2])
-       
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ message: `result :${cals[0].result}` }),
-        };
+        const result = await execute(`
+            select * from tb_test
+        `);
+
+        function uploadBufferToS3(buffer, fileName) {
+            const params = {
+                Bucket: '',//bucket 이름
+                Key: fileName,
+                Body: buffer,
+                ACL: 'public-read',//private 도 있음
+                ContentType: 'application/json'
+                
+            };
+            return s3.upload(params).promise();
+      }
+
+      //주의! await안달면 안기다리고 넘어감
+      await uploadBufferToS3(JSON.stringify({result}), `[폴더명]/[파일명].json`)
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify({ message: `send s3() :${new Date()}` }),
+    };
     }catch(error){
         console.log(error)
         return {
@@ -38,3 +59,5 @@ exports.handler = async (event) => {
         };
     }
   };
+  
+  
